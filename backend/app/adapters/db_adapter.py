@@ -276,10 +276,18 @@ class SQLiteAuth:
             cursor = self.conn.cursor()
             cursor.execute("SELECT id, email, user_metadata FROM auth_accounts WHERE id = ?", (user_id,))
             row = cursor.fetchone()
-            if not row:
-                raise Exception("User not found")
-            meta = json.loads(row[2]) if row[2] else {}
-            return SQLiteAuthResponse(SQLiteAuthUser(row[0], row[1], meta), token)
+            if row:
+                meta = json.loads(row[2]) if row[2] else {}
+                return SQLiteAuthResponse(SQLiteAuthUser(row[0], row[1], meta), token)
+
+            # Fallback to users table
+            cursor.execute("SELECT id, email, display_name, role FROM users WHERE id = ? OR auth_id = ?", (user_id, user_id))
+            user_row = cursor.fetchone()
+            if user_row:
+                meta = {"display_name": user_row[2], "role": user_row[3]}
+                return SQLiteAuthResponse(SQLiteAuthUser(user_row[0], user_row[1], meta), token)
+
+            raise Exception("User not found")
         except Exception as e:
             raise Exception(f"Invalid token: {e}")
 

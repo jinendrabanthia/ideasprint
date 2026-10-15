@@ -16,6 +16,13 @@ interface AuthContextType {
   error: string;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string, role?: string) => Promise<void>;
+  signInWithGoogle: (googleData: {
+    id_token?: string;
+    email?: string;
+    display_name?: string;
+    google_id?: string;
+    role?: string;
+  }) => Promise<void>;
   signOut: () => void;
   clearError: () => void;
 }
@@ -88,6 +95,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (googleData: {
+    id_token?: string;
+    email?: string;
+    display_name?: string;
+    google_id?: string;
+    role?: string;
+  }) => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.signInWithGoogle(googleData);
+      const userData: User = {
+        id: res.user_id,
+        email: res.email,
+        role: res.role,
+        profileId: res.profile_id,
+        displayName: res.display_name,
+        token: res.access_token,
+      };
+      api.setToken(res.access_token);
+      setUser(userData);
+      localStorage.setItem('afe_session', JSON.stringify(userData));
+    } catch (e: any) {
+      setError(e.message || 'Google Sign-In failed');
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = () => {
     api.setToken(null);
     setUser(null);
@@ -97,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearError = () => setError('');
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, signIn, signUp, signOut, clearError }}>
+    <AuthContext.Provider value={{ user, loading, error, signIn, signUp, signInWithGoogle, signOut, clearError }}>
       {children}
     </AuthContext.Provider>
   );

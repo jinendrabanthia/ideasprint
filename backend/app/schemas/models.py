@@ -77,6 +77,15 @@ class SignInRequest(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    id_token: str | None = None
+    email: str | None = None
+    display_name: str | None = None
+    google_id: str | None = None
+    role: UserRole = UserRole.SENIOR
+
+
+
 class AuthResponse(BaseModel):
     access_token: str
     user_id: str

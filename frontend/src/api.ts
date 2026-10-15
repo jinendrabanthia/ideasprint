@@ -83,6 +83,23 @@ class ApiClient {
     }>('POST', '/auth/signin', { email, password });
   }
 
+  async signInWithGoogle(payload: {
+    id_token?: string;
+    email?: string;
+    display_name?: string;
+    google_id?: string;
+    role?: string;
+  }) {
+    return this.request<{
+      access_token: string;
+      user_id: string;
+      email: string;
+      role: string;
+      profile_id: string | null;
+      display_name: string;
+    }>('POST', '/auth/google', payload);
+  }
+
   async getMe() {
     return this.request<{ id: string; email: string; role: string; display_name: string }>('GET', '/auth/me');
   }

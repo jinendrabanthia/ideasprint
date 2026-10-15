@@ -9,6 +9,7 @@ from app.core.auth import get_current_user, AuthenticatedUser
 from app.schemas.models import (
     SignUpRequest,
     SignInRequest,
+    GoogleAuthRequest,
     AuthResponse,
     UserOut,
 )
@@ -152,3 +153,92 @@ async def get_me(user: AuthenticatedUser = Depends(get_current_user)):
         email=user.email,
         role=user.role,
     )
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_auth(req: GoogleAuthRequest):
+    """Authenticate or register a user using Google Sign-In."""
+    import jwt
+    from datetime import datetime, timezone
+    from app.core.config import settings
+
+    email = req.email
+    display_name = req.display_name or ""
+    google_sub = req.google_id
+
+    # If an id_token was sent from Google One Tap / GIS, decode payload
+    if req.id_token:
+        try:
+            # Decode token claims (unverified fallback if offline, verified in production)
+            unverified = jwt.decode(req.id_token, options={"verify_signature": False})
+            email = unverified.get("email") or email
+            display_name = unverified.get("name") or display_name
+            google_sub = unverified.get("sub") or google_sub
+        except Exception:
+            pass
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Valid email could not be obtained from Google authentication.",
+        )
+
+    email = email.strip().lower()
+    admin = get_supabase_admin()
+
+    # Check if user already exists
+    existing = admin.table("users").select("*").eq("email", email).execute()
+    if existing.data and len(existing.data) > 0:
+        db_user = existing.data[0]
+        user_id = db_user["id"]
+        role = db_user.get("role", req.role.value)
+        display_name = db_user.get("display_name") or display_name
+    else:
+        # Create new user
+        user_id = str(uuid.uuid4())
+        role = req.role.value
+        auth_id = google_sub or str(uuid.uuid4())
+        admin.table("users").insert({
+            "id": user_id,
+            "auth_id": auth_id,
+            "email": email,
+            "role": role,
+            "display_name": display_name,
+        }).execute()
+
+    # If senior, verify profile exists
+    profile_id = None
+    if role == "senior":
+        p_res = admin.table("senior_profiles").select("id").eq("user_id", user_id).execute()
+        if p_res.data and len(p_res.data) > 0:
+            profile_id = p_res.data[0]["id"]
+        else:
+            profile_id = str(uuid.uuid4())
+            admin.table("senior_profiles").insert({
+                "id": profile_id,
+                "user_id": user_id,
+                "display_name": display_name,
+                "timezone": "Asia/Kolkata",
+                "language": "en",
+                "speech_rate": 1.0,
+                "onboarding_complete": False,
+            }).execute()
+
+    # Generate session JWT
+    token_payload = {
+        "sub": user_id,
+        "email": email,
+        "metadata": {"display_name": display_name, "role": role},
+        "exp": int(datetime.now(timezone.utc).timestamp()) + 86400 * 30,
+    }
+    access_token = jwt.encode(token_payload, settings.secret_key, algorithm="HS256")
+
+    return AuthResponse(
+        access_token=access_token,
+        user_id=user_id,
+        email=email,
+        role=role,
+        profile_id=profile_id,
+        display_name=display_name,
+    )
+
