@@ -203,3 +203,26 @@ def test_ai_safety_and_medical_boundaries(senior_user):
     assert inj_res.status_code == 200
     assert "secret" not in inj_res.json()["message"].lower()
     assert "api_key" not in inj_res.json()["message"].lower()
+
+
+def test_google_authentication():
+    """Verify Google single sign-on creates profile, returns JWT, and authenticates requests."""
+    email = f"google_senior_{uuid.uuid4().hex[:6]}@gmail.com"
+    res = client.post("/api/v1/auth/google", json={
+        "email": email,
+        "display_name": "Google Test Senior",
+        "google_id": "google_12345",
+        "role": "senior",
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["email"] == email
+    assert data["role"] == "senior"
+    assert data["profile_id"] is not None
+    token = data["access_token"]
+
+    # Verify token authorizes access to protected endpoints
+    me_res = client.get("/api/v1/profiles/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    assert me_res.json()["display_name"] == "Google Test Senior"
+

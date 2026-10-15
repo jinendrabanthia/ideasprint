@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import logoImg from '../assets/logo.png';
 
 export default function Layout() {
   const { user, signOut } = useAuth();
@@ -7,9 +8,13 @@ export default function Layout() {
   return (
     <div className="app-layout">
       <header className="app-header">
-        <div className="app-header__logo">
-          <div className="app-header__logo-icon">🌻</div>
-          <span>Sahara</span>
+        <div className="app-header__logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img
+            src={logoImg}
+            alt="Sahara"
+            style={{ width: '38px', height: '38px', borderRadius: '11px', objectFit: 'cover' }}
+          />
+          <span style={{ fontWeight: 700, fontSize: '18px' }}>Sahara</span>
         </div>
         <nav className="app-header__nav">
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
