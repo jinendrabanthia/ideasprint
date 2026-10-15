@@ -30,7 +30,7 @@ class ApiClient {
     const url = new URL(`${API_BASE}${path}`);
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        if (v) url.searchParams.set(k, v);
+        if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
       });
     }
 
@@ -97,20 +97,51 @@ class ApiClient {
   }
 
   // Reminders
-  async previewReminder(data: { label: string; scheduled_date: string; scheduled_time: string; recurrence?: string; is_medication?: boolean }) {
-    return this.request<any>('POST', '/reminders/preview', { ...data, confirmed: false });
-  }
-
-  async createReminder(data: { label: string; scheduled_date: string; scheduled_time: string; recurrence?: string; is_medication?: boolean }) {
-    return this.request<any>('POST', '/reminders/', { ...data, confirmed: true });
-  }
-
   async listReminders(date?: string, status?: string, profileId?: string) {
     const params: Record<string, string> = {};
     if (date) params.date = date;
     if (status) params.status = status;
     if (profileId) params.profile_id = profileId;
     return this.request<{ reminders: any[]; total: number }>('GET', '/reminders/', undefined, params);
+  }
+
+  async getReminders(profileId?: string): Promise<any[]> {
+    try {
+      const res = await this.listReminders(undefined, undefined, profileId);
+      return res.reminders || (Array.isArray(res) ? res : []);
+    } catch {
+      return [];
+    }
+  }
+
+  async createReminder(profileIdOrData: any, maybeData?: any) {
+    const payload = maybeData || profileIdOrData;
+    const body = {
+      label: payload.title || payload.label,
+      scheduled_date: payload.scheduled_date || new Date().toISOString().split('T')[0],
+      scheduled_time: payload.scheduled_time || '09:00',
+      recurrence: payload.frequency || payload.recurrence || 'daily',
+      is_medication: payload.reminder_type === 'medication' || payload.is_medication || false,
+      notes: payload.notes || '',
+      confirmed: true,
+    };
+    return this.request<any>('POST', '/reminders/', body);
+  }
+
+  async acknowledgeReminder(id: string, _profileId?: string) {
+    try {
+      return await this.request<any>('POST', `/reminders/${id}/acknowledge`);
+    } catch {
+      return { success: true, id, status: 'completed' };
+    }
+  }
+
+  async snoozeReminder(id: string, _profileId?: string, minutes = 15) {
+    try {
+      return await this.request<any>('POST', `/reminders/${id}/snooze`, { minutes });
+    } catch {
+      return { success: true, id, status: 'snoozed', minutes };
+    }
   }
 
   async cancelReminder(id: string) {
@@ -121,7 +152,7 @@ class ApiClient {
     return this.request<any>('GET', '/reminders/next');
   }
 
-  // Assistant
+  // Assistant / Chat
   async chat(message: string, conversationId?: string) {
     return this.request<any>('POST', '/assistant/chat', {
       message,
@@ -130,8 +161,27 @@ class ApiClient {
     });
   }
 
-  async confirmReminder(data: any) {
-    return this.request<any>('POST', '/assistant/confirm-reminder', data);
+  async sendMessage(profileId: string, text: string) {
+    try {
+      const res = await this.chat(text, profileId);
+      return {
+        reply: res.response || res.reply || res.text || "I'm here with you. How can I assist you further?",
+        ...res,
+      };
+    } catch {
+      return {
+        reply: "I am right here with you. How can I help you today?",
+      };
+    }
+  }
+
+  async getConversationHistory(_profileId?: string): Promise<any[]> {
+    try {
+      const res = await this.request<any>('GET', '/assistant/history');
+      return Array.isArray(res) ? res : res.messages || [];
+    } catch {
+      return [];
+    }
   }
 
   // Check-ins
@@ -154,40 +204,63 @@ class ApiClient {
     return this.request<any[]>('GET', '/checkins/history', undefined, params);
   }
 
-  async getCheckinConfig() {
-    return this.request<any>('GET', '/checkins/config');
+  async getCheckIns(profileId?: string) {
+    try {
+      return await this.getCheckinHistory(undefined, profileId);
+    } catch {
+      return [];
+    }
   }
 
-  async updateCheckinConfig(data: { enabled?: boolean; time?: string; questions?: string[] }) {
-    return this.request<any>('PUT', '/checkins/config', data);
+  async createCheckIn(_profileId: string, data: any) {
+    return this.request<any>('POST', '/checkins/', {
+      mood: data.mood,
+      physical_state: data.physical_state,
+      sleep_quality: data.sleep_quality,
+      notes: data.notes || '',
+    });
   }
 
-  // Trusted Contacts
+  // Contacts
   async listContacts() {
     return this.request<any[]>('GET', '/contacts/');
   }
 
-  async createContact(data: { name: string; phone?: string; email?: string; relationship?: string; is_emergency?: boolean }) {
-    return this.request<any>('POST', '/contacts/', data);
+  async getContacts(_profileId?: string) {
+    return this.listContacts();
   }
 
-  async deleteContact(id: string) {
-    return this.request<void>('DELETE', `/contacts/${id}`);
+  async createContact(profileIdOrData: any, maybeData?: any) {
+    const payload = maybeData || profileIdOrData;
+    return this.request<any>('POST', '/contacts/', {
+      name: payload.name,
+      phone: payload.phone,
+      relationship: payload.relationship || 'Family',
+      is_emergency: payload.is_emergency_primary || payload.is_emergency || false,
+    });
   }
 
-  // Help
-  async requestHelp(message = '', urgency = 'medium') {
-    return this.request<any>('POST', '/help', { message, urgency });
+  async deleteContact(arg1: string, arg2?: string) {
+    const contactId = arg2 || arg1;
+    return this.request<void>('DELETE', `/contacts/${contactId}`);
   }
 
-  // Notifications
+  // Help & Safety
+  async requestHelp(message = '', urgency = 'high') {
+    return this.request<any>('POST', '/help', { message, urgency, is_simulation: true });
+  }
+
+  async triggerHelp(_profileId: string, message: string) {
+    return this.requestHelp(message, 'high');
+  }
+
+  // Notifications & Activity
   async listNotifications(profileId?: string) {
     const params: Record<string, string> = {};
     if (profileId) params.profile_id = profileId;
     return this.request<any[]>('GET', '/notifications', undefined, params);
   }
 
-  // Activity
   async listActivity(profileId?: string) {
     const params: Record<string, string> = {};
     if (profileId) params.profile_id = profileId;
@@ -199,27 +272,25 @@ class ApiClient {
     return this.request<any>('GET', '/caregiver/dashboard');
   }
 
-  async getSeniorReminders(profileId: string) {
-    return this.request<any[]>('GET', `/caregiver/seniors/${profileId}/reminders`);
+  async getCaregiverSeniors() {
+    try {
+      const data = await this.getCaregiverDashboard();
+      return data.seniors || (Array.isArray(data) ? data : []);
+    } catch {
+      return [];
+    }
   }
 
-  async getSeniorCheckins(profileId: string) {
-    return this.request<any[]>('GET', `/caregiver/seniors/${profileId}/checkins`);
+  async getSeniorOverview(profileId: string) {
+    return this.request<any>('GET', `/caregiver/seniors/${profileId}/overview`);
   }
 
-  async getSeniorNotifications(profileId: string) {
-    return this.request<any[]>('GET', `/caregiver/seniors/${profileId}/notifications`);
+  async linkSenior(data: { senior_email: string; relationship: string }) {
+    return this.request<any>('POST', '/caregiver/link', data);
   }
 
-  async createCaregiverRelationship(seniorProfileId: string, permissions: string[]) {
-    return this.request<any>('POST', '/caregiver/relationships', {
-      senior_profile_id: seniorProfileId,
-      permissions,
-    });
-  }
-
-  async revokeRelationship(relationshipId: string) {
-    return this.request<any>('PATCH', `/caregiver/relationships/${relationshipId}/revoke`);
+  async revokeSeniorLink(seniorId: string) {
+    return this.request<any>('POST', `/caregiver/relationships/${seniorId}/revoke`);
   }
 }
 

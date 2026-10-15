@@ -13,7 +13,7 @@ router = APIRouter(tags=["help-notifications"])
 
 # ── Help ─────────────────────────────────────────────
 
-@router.post("/help", response_model=HelpResponse, prefix="/help")
+@router.post("/help", response_model=HelpResponse)
 async def request_help(
     req: HelpRequest,
     user: AuthenticatedUser = Depends(get_current_user),
@@ -34,7 +34,7 @@ async def request_help(
 
 # ── Notifications ────────────────────────────────────
 
-@router.get("/notifications", response_model=list[NotificationOut], prefix="/notifications")
+@router.get("/notifications", response_model=list[NotificationOut])
 async def list_notifications(
     user: AuthenticatedUser = Depends(get_current_user),
     profile_id: str | None = Query(None),
@@ -60,7 +60,7 @@ async def list_notifications(
 
 # ── Audit Events ─────────────────────────────────────
 
-@router.get("/activity", response_model=list[AuditEventOut], prefix="/activity")
+@router.get("/activity", response_model=list[AuditEventOut])
 async def list_activity(
     user: AuthenticatedUser = Depends(get_current_user),
     profile_id: str | None = Query(None),
