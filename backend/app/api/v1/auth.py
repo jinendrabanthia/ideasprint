@@ -186,8 +186,11 @@ async def google_auth(req: GoogleAuthRequest):
     email = email.strip().lower()
     admin = get_supabase_admin()
 
-    # Check if user already exists
+    # Check if user already exists by email or auth_id
     existing = admin.table("users").select("*").eq("email", email).execute()
+    if not (existing.data and len(existing.data) > 0) and google_sub:
+        existing = admin.table("users").select("*").eq("auth_id", google_sub).execute()
+
     if existing.data and len(existing.data) > 0:
         db_user = existing.data[0]
         user_id = db_user["id"]
@@ -197,7 +200,12 @@ async def google_auth(req: GoogleAuthRequest):
         # Create new user
         user_id = str(uuid.uuid4())
         role = req.role.value
+        # Ensure auth_id is unique if google_sub is provided
         auth_id = google_sub or str(uuid.uuid4())
+        sub_check = admin.table("users").select("id").eq("auth_id", auth_id).execute()
+        if sub_check.data and len(sub_check.data) > 0:
+            auth_id = f"{auth_id}_{uuid.uuid4().hex[:6]}"
+
         admin.table("users").insert({
             "id": user_id,
             "auth_id": auth_id,
