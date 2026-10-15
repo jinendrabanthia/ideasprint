@@ -1257,3 +1257,39 @@ select.form-input {
   gap: var(--space-md);
   justify-content: center;
 }
+
+/* ── WCAG 2.2 Accessibility: Reduced Motion & High Contrast ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.high-contrast, [data-contrast="high"] {
+  --text-primary: #000000 !important;
+  --text-secondary: #1a1a1a !important;
+  --bg-primary: #FFFFFF !important;
+  --bg-card: #FFFFFF !important;
+  --border: #000000 !important;
+  --border-strong: #000000 !important;
+}
+
+.high-contrast .btn-primary,
+[data-contrast="high"] .btn-primary {
+  background: #000000 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #000000 !important;
+}
+
+.high-contrast .card,
+.high-contrast .reminder-card,
+.high-contrast .message-bubble,
+[data-contrast="high"] .card {
+  border: 2px solid #000000 !important;
+}
+

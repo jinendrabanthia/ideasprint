@@ -25,9 +25,10 @@ EMERGENCY_KEYWORDS = [
     "chest pain", "heart attack", "stroke",
     "unconscious", "passed out", "fainted",
     "bleeding badly", "severe bleeding",
-    "fell down", "fallen", "i fell",
-    "call ambulance", "call 911", "emergency",
+    "fell down", "fallen", "i fell", "collapsed", "collapse", "on the floor",
+    "call ambulance", "call 911", "call 112", "emergency",
     "help me", "please help", "need help now",
+    "numb", "numbness", "arm is numb", "face is drooping",
     "i'm dying", "im dying",
 ]
 

@@ -3,7 +3,7 @@
  * All requests include the auth token and consistent error responses.
  */
 
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1').replace(/\/$/, '');
 
 interface ApiError {
   detail: string;
