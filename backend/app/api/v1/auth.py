@@ -1,0 +1,154 @@
+"""Authentication endpoints — sign up, sign in, current user."""
+from __future__ import annotations
+
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, status
+
+from app.core.supabase_client import get_supabase, get_supabase_admin
+from app.core.auth import get_current_user, AuthenticatedUser
+from app.schemas.models import (
+    SignUpRequest,
+    SignInRequest,
+    AuthResponse,
+    UserOut,
+)
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/signup", response_model=AuthResponse)
+async def sign_up(req: SignUpRequest):
+    """Register a new user through Supabase Auth."""
+    try:
+        client = get_supabase()
+        auth_response = client.auth.sign_up({
+            "email": req.email,
+            "password": req.password,
+            "options": {
+                "data": {
+                    "display_name": req.display_name,
+                    "role": req.role.value,
+                },
+            },
+        })
+
+        if not auth_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create account. The email may already be registered.",
+            )
+
+        auth_user = auth_response.user
+        access_token = auth_response.session.access_token if auth_response.session else ""
+
+        # Create app user record
+        admin = get_supabase_admin()
+        user_id = str(uuid.uuid4())
+
+        admin.table("users").insert({
+            "id": user_id,
+            "auth_id": auth_user.id,
+            "email": req.email,
+            "role": req.role.value,
+            "display_name": req.display_name,
+        }).execute()
+
+        profile_id = None
+        if req.role.value == "senior":
+            profile_id = str(uuid.uuid4())
+            admin.table("senior_profiles").insert({
+                "id": profile_id,
+                "user_id": user_id,
+                "display_name": req.display_name,
+                "timezone": "Asia/Kolkata",
+                "language": "en",
+                "speech_rate": 1.0,
+                "onboarding_complete": False,
+            }).execute()
+
+        return AuthResponse(
+            access_token=access_token,
+            user_id=user_id,
+            email=req.email,
+            role=req.role.value,
+            profile_id=profile_id,
+            display_name=req.display_name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Registration failed: {str(e)}",
+        )
+
+
+@router.post("/signin", response_model=AuthResponse)
+async def sign_in(req: SignInRequest):
+    """Authenticate a user and return session tokens."""
+    try:
+        client = get_supabase()
+        auth_response = client.auth.sign_in_with_password({
+            "email": req.email,
+            "password": req.password,
+        })
+
+        if not auth_response.user or not auth_response.session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        auth_user = auth_response.user
+        access_token = auth_response.session.access_token
+
+        # Load app user
+        admin = get_supabase_admin()
+        result = admin.table("users").select("*").eq("auth_id", auth_user.id).execute()
+
+        if not result.data or len(result.data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found. Please sign up first.",
+            )
+
+        db_user = result.data[0]
+        profile_id = None
+
+        if db_user["role"] == "senior":
+            profile_result = (
+                admin.table("senior_profiles")
+                .select("id")
+                .eq("user_id", db_user["id"])
+                .execute()
+            )
+            if profile_result.data and len(profile_result.data) > 0:
+                profile_id = profile_result.data[0]["id"]
+
+        return AuthResponse(
+            access_token=access_token,
+            user_id=db_user["id"],
+            email=db_user["email"],
+            role=db_user["role"],
+            profile_id=profile_id,
+            display_name=db_user.get("display_name", ""),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication failed: {str(e)}",
+        )
+
+
+@router.get("/me", response_model=UserOut)
+async def get_me(user: AuthenticatedUser = Depends(get_current_user)):
+    """Get the current authenticated user's info."""
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+    )
