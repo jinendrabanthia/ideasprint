@@ -21,17 +21,34 @@ export default function AuthPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If Google Client ID is configured, initialize Google Identity Services
     const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
-    if (clientId && (window as any).google?.accounts?.id) {
+    if (!clientId) return;
+
+    if ((window as any).google?.accounts?.id) {
       try {
         (window as any).google.accounts.id.initialize({
           client_id: clientId,
           callback: handleGoogleCredentialResponse,
         });
-      } catch (e) {
-        console.warn('Google GSI init notice:', e);
+      } catch {
+        // Handled silently
       }
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        try {
+          (window as any).google?.accounts?.id?.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+          });
+        } catch {
+          // Handled silently
+        }
+      };
+      document.head.appendChild(script);
     }
   }, [role]);
 
@@ -99,13 +116,17 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="auth-page">
+    <main className="auth-page" role="main" id="main-content" aria-label="Sahara Authentication">
       <div className="auth-card">
         <div className="auth-card__header">
           <div className="auth-card__logo" style={{ textAlign: 'center', marginBottom: '14px' }}>
             <img
               src={logoImg}
-              alt="Sahara Logo"
+              alt="Sahara Daily Care Companion Logo"
+              width={88}
+              height={88}
+              fetchPriority="high"
+              loading="eager"
               style={{
                 width: '88px',
                 height: '88px',
@@ -446,6 +467,9 @@ export default function AuthPage() {
               <form onSubmit={handleCustomGoogleSubmit} style={{ marginTop: '12px' }}>
                 <input
                   type="email"
+                  id="custom-google-email"
+                  name="customGoogleEmail"
+                  aria-label="Gmail Address"
                   required
                   placeholder="Enter your Gmail address (e.g. john@gmail.com)"
                   value={customGoogleEmail}
@@ -461,6 +485,9 @@ export default function AuthPage() {
                 />
                 <input
                   type="text"
+                  id="custom-google-name"
+                  name="customGoogleName"
+                  aria-label="Your Name (optional)"
                   placeholder="Your Name (optional)"
                   value={customGoogleName}
                   onChange={(e) => setCustomGoogleName(e.target.value)}
@@ -493,6 +520,6 @@ export default function AuthPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "name": "Sahara Daily Care Companion",
+  "short_name": "Sahara",
+  "description": "Voice-First AI Companion for Senior Daily Care and Routine Adherence",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#E87949",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

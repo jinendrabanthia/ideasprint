@@ -1,0 +1,28 @@
+# robots.txt for Sahara Daily Care Companion
+User-agent: *
+Allow: /
+Allow: /auth
+Allow: /onboarding
+Allow: /chat
+Allow: /reminders
+Allow: /checkin
+Allow: /settings
+Allow: /caregiver
+
+# AI Search & Agentic Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+Sitemap: https://sahara-care.vercel.app/sitemap.xml

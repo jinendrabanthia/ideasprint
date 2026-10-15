@@ -7,16 +7,19 @@ export default function Layout() {
 
   return (
     <div className="app-layout">
-      <header className="app-header">
+      <header className="app-header" role="banner">
         <div className="app-header__logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img
             src={logoImg}
-            alt="Sahara"
+            alt="Sahara Daily Care"
+            width={38}
+            height={38}
+            loading="lazy"
             style={{ width: '38px', height: '38px', borderRadius: '11px', objectFit: 'cover' }}
           />
           <span style={{ fontWeight: 700, fontSize: '18px' }}>Sahara</span>
         </div>
-        <nav className="app-header__nav">
+        <nav className="app-header__nav" aria-label="User navigation">
           <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
             {user?.displayName || user?.email}
           </span>
@@ -26,7 +29,7 @@ export default function Layout() {
         </nav>
       </header>
 
-      <main className="app-main">
+      <main className="app-main" id="main-content" role="main">
         <Outlet />
       </main>
 

@@ -1,0 +1,24 @@
+# Sahara Daily Care Companion (AI For Elders)
+
+> Voice-first AI companion for senior daily care, routine adherence, and caregiver peace of mind.
+
+## Overview
+Sahara is a non-clinical assistive technology platform designed for independent senior living. It provides voice interactions, medication routine tracking, mood/wellbeing check-ins, and caregiver peace-of-mind dashboards.
+
+## Key Routes & Capabilities
+- `/` or `/home`: Senior Home Dashboard displaying daily routine schedule, next scheduled medication, quick check-in prompt, and voice assistant trigger.
+- `/auth`: Sign-in and account creation for both Seniors and Caregivers. Supports email/password authentication and Google OAuth single sign-on.
+- `/chat`: Voice and text conversation companion powered by Gemini AI with elder-friendly speech pacing and proactive check-in topics.
+- `/reminders`: Medication and daily routine tracker with one-tap acknowledgment ("I took this") and 15-minute snooze.
+- `/checkin`: Daily wellbeing assessment evaluating mood, physical comfort, and sleep quality.
+- `/caregiver`: Caregiver and family monitoring portal with privacy-preserving summaries, adherence rates, and safety alert histories.
+- `/settings`: Senior accessibility controls including High Contrast mode, text sizing (Default, Large, Extra Large), and caregiver consent management.
+
+## Machine-Readable API
+- Backend API Base: `https://sahara-care.onrender.com/api/v1` (or local `http://localhost:8000/api/v1`)
+- OpenAPI / Swagger Docs: `/docs`
+- Health Endpoint: `/health`
+
+## Accessibility & Non-Clinical Notice
+- WCAG 2.1 AA compliant color contrast and 48x48px minimum touch targets.
+- Not a medical device or diagnostic tool. Emergency simulations are explicitly marked.
